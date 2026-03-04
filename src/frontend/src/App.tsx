@@ -17,7 +17,7 @@ function makeStars(count: number) {
   }));
 }
 
-const STARS_60 = makeStars(60);
+const _STARS_60 = makeStars(60);
 const STARS_80 = makeStars(80);
 
 /* ─── Static sparkle configs ─── */
@@ -233,24 +233,55 @@ function VintagePaper({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  // Allow callers to override border-radius (e.g. Screen1 uses borderRadius: 0)
+  const outerRadius =
+    style.borderRadius !== undefined ? style.borderRadius : "16px";
+  const innerRadius =
+    outerRadius === 0 || outerRadius === "0" || outerRadius === "0px"
+      ? "0px"
+      : "13px";
+
+  // Props that belong on the outer sizing wrapper (not inner content div)
+  const {
+    borderRadius: _br,
+    padding: _p,
+    overflow: _ov,
+    display: _d,
+    flexDirection: _fd,
+    alignItems: _ai,
+    ...outerStyle
+  } = style;
+
+  // Props that belong on the inner content wrapper
+  const innerStyle: React.CSSProperties = {
+    border: "1px solid rgba(26, 58, 184, 0.35)",
+    borderRadius: innerRadius,
+    width: "100%",
+    height: "100%",
+    display: style.display ?? "flex",
+    flexDirection:
+      (style.flexDirection as React.CSSProperties["flexDirection"]) ?? "column",
+    ...(style.alignItems ? { alignItems: style.alignItems } : {}),
+    ...(style.overflow ? { overflow: style.overflow } : {}),
+    ...(style.padding ? { padding: style.padding } : { padding: "0" }),
+  };
+
   return (
     <div
-      className={`relative vintage-paper rounded-2xl w-full mx-auto ${className}`}
-      style={style}
+      className={`relative vintage-paper w-full mx-auto ${className}`}
+      style={{
+        border: "2px solid #1a3ab8",
+        borderRadius: outerRadius,
+        padding: "3px",
+        ...outerStyle,
+      }}
     >
-      <img
-        src="/assets/generated/vintage-paper-border-transparent.dim_900x650.png"
-        alt=""
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ objectFit: "fill", opacity: 0.85, zIndex: 1 }}
-        aria-hidden="true"
-      />
-      <div className="relative z-10">{children}</div>
+      <div style={innerStyle}>{children}</div>
     </div>
   );
 }
 
-/* ─── Screen 0: Sealed Envelope ─── */
+/* ─── Screen 0: Sealed Envelope (full-screen CSS envelope) ─── */
 interface Screen0Props {
   onOpen: () => void;
 }
@@ -265,87 +296,201 @@ function Screen0({ onOpen }: Screen0Props) {
   };
 
   return (
-    <div
-      className="relative w-full h-full night-sky flex flex-col items-center justify-center overflow-hidden select-none"
-      data-ocid="page.section"
+    <button
+      type="button"
+      className="relative w-full h-full overflow-hidden select-none p-0 border-0"
+      data-ocid="envelope.open_button"
+      style={{
+        background:
+          "linear-gradient(160deg, #cce8f7 0%, #a8d8f0 40%, #7ab8d8 100%)",
+        cursor: animating ? "default" : "pointer",
+      }}
+      onClick={handleClick}
+      aria-label="Open birthday card"
     >
-      <SparkleLayer dark />
+      <SparkleLayer />
 
-      {/* Background stars */}
-      <div className="absolute inset-0 pointer-events-none">
-        {STARS_60.map((s) => (
-          <div
-            key={s.id}
-            className="absolute rounded-full"
-            style={{
-              width: `${s.w}px`,
-              height: `${s.w}px`,
-              background: "#f0d060",
-              left: s.left,
-              top: s.top,
-              opacity: s.opacity,
-              animation: `sparkle-twinkle ${s.animDur} ease-in-out ${s.animDelay} infinite`,
-            }}
+      {/* ── Bottom V-flap (decorative) ── */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "50%",
+          zIndex: 1,
+          pointerEvents: "none",
+        }}
+      >
+        <svg
+          viewBox="0 0 100 50"
+          preserveAspectRatio="none"
+          style={{ width: "100%", height: "100%", display: "block" }}
+          aria-hidden="true"
+          role="presentation"
+        >
+          <polygon
+            points="0,50 50,0 100,50"
+            fill="rgba(106,168,209,0.55)"
+            stroke="rgba(13,27,94,0.12)"
+            strokeWidth="0.3"
           />
-        ))}
+          <polygon
+            points="0,0 50,50 0,50"
+            fill="rgba(120,178,220,0.4)"
+            stroke="rgba(13,27,94,0.10)"
+            strokeWidth="0.3"
+          />
+          <polygon
+            points="100,0 50,50 100,50"
+            fill="rgba(100,160,205,0.4)"
+            stroke="rgba(13,27,94,0.10)"
+            strokeWidth="0.3"
+          />
+        </svg>
       </div>
 
-      {/* Envelope */}
-      <button
-        type="button"
-        className="relative z-20 cursor-pointer group bg-transparent border-0 p-0"
+      {/* ── Top flap triangle (pointing down) — seal area ── */}
+      <div
         style={{
-          filter: animating ? "brightness(1.3)" : "none",
-          transform: animating ? "scale(1.05)" : "scale(1)",
-          transition: "transform 0.4s ease, filter 0.4s ease",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "50%",
+          zIndex: animating ? 3 : 5,
+          transformOrigin: "top center",
+          perspective: "900px",
+          filter: animating
+            ? "drop-shadow(0 0 40px rgba(212,175,55,0.8))"
+            : undefined,
+          transition: "filter 0.4s ease",
         }}
-        onClick={handleClick}
-        data-ocid="envelope.open_button"
-        aria-label="Open birthday card"
+        className={animating ? "envelope-flap-opening" : ""}
       >
+        <svg
+          viewBox="0 0 100 50"
+          preserveAspectRatio="none"
+          style={{ width: "100%", height: "100%", display: "block" }}
+          aria-hidden="true"
+          role="presentation"
+        >
+          <polygon
+            points="0,0 100,0 50,50"
+            fill="#90c8e8"
+            stroke="rgba(13,27,94,0.15)"
+            strokeWidth="0.4"
+          />
+        </svg>
+
+        {/* ── Wax seal centered on flap ── */}
         <div
-          className={animating ? "" : "wax-glow"}
           style={{
-            filter: animating
-              ? "drop-shadow(0 0 40px rgba(212,175,55,1)) drop-shadow(0 0 80px rgba(212,175,55,0.6))"
-              : undefined,
+            position: "absolute",
+            bottom: "10%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
           }}
         >
-          <img
-            src="/assets/generated/envelope-sealed.dim_800x600.png"
-            alt="Sealed envelope with wax seal"
-            className="w-full max-w-lg md:max-w-xl lg:max-w-2xl h-auto drop-shadow-2xl"
-            style={{
-              filter: "drop-shadow(0 20px 60px rgba(7,9,30,0.8))",
-            }}
-          />
-        </div>
-
-        {animating && (
           <div
-            className="absolute inset-0 rounded-full pointer-events-none"
+            className={!animating ? "wax-glow" : ""}
             style={{
+              width: "clamp(64px, 10vw, 96px)",
+              height: "clamp(64px, 10vw, 96px)",
+              borderRadius: "50%",
               background:
-                "radial-gradient(circle, rgba(212,175,55,0.3) 0%, transparent 70%)",
-              animation: "fade-in-up 0.5s ease-out",
+                "radial-gradient(circle at 40% 35%, #2a3a9a 0%, #0d1b5e 60%, #060e3a 100%)",
+              border: "2px solid #d4af37",
+              boxShadow:
+                "0 4px 20px rgba(13,27,94,0.5), 0 0 24px rgba(212,175,55,0.35)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
             }}
-          />
-        )}
-      </button>
+          >
+            <svg
+              viewBox="0 0 40 40"
+              style={{
+                width: "62%",
+                height: "62%",
+                fill: "none",
+                stroke: "#d4af37",
+                strokeWidth: "1.5",
+                strokeLinecap: "round",
+              }}
+              aria-hidden="true"
+              role="presentation"
+            >
+              <circle cx="20" cy="20" r="6" />
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, idx) => {
+                const rad = (angle * Math.PI) / 180;
+                const x1 = 20 + Math.cos(rad) * 9;
+                const y1 = 20 + Math.sin(rad) * 9;
+                const x2 = 20 + Math.cos(rad) * 14;
+                const y2 = 20 + Math.sin(rad) * 14;
+                if (idx % 2 === 0) {
+                  return (
+                    <line
+                      key={angle}
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke="#d4af37"
+                      strokeWidth="1.5"
+                    />
+                  );
+                }
+                const mx = 20 + Math.cos(rad) * 11.5;
+                const my = 20 + Math.sin(rad) * 11.5;
+                const perpRad = rad + Math.PI / 2;
+                const cx1 = mx + Math.cos(perpRad) * 1.5;
+                const cy1 = my + Math.sin(perpRad) * 1.5;
+                return (
+                  <path
+                    key={angle}
+                    d={`M ${x1} ${y1} Q ${cx1} ${cy1} ${x2} ${y2}`}
+                    stroke="#d4af37"
+                    strokeWidth="1.2"
+                    fill="none"
+                  />
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+      </div>
 
-      {/* Prompt */}
-      <p
-        className="mt-10 text-lg md:text-xl pulse-glow z-20"
-        style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
-          fontStyle: "italic",
-          color: "#d4af37",
-          letterSpacing: "0.1em",
-        }}
-      >
-        Tap to open ✨
-      </p>
-    </div>
+      {/* ── "Tap to open" prompt at bottom ── */}
+      {!animating && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "6%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            textAlign: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <p
+            className="pulse-glow"
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontStyle: "italic",
+              color: "#d4af37",
+              fontSize: "clamp(14px, 2.5vw, 20px)",
+              letterSpacing: "0.12em",
+            }}
+          >
+            Tap to open ✨
+          </p>
+        </div>
+      )}
+    </button>
   );
 }
 
@@ -361,8 +506,8 @@ function Screen1({ onNext }: Screen1Props) {
   const handleEnvelopeClick = () => {
     if (opened) return;
     setOpened(true);
-    // After flap opens (~0.6s), reveal paper
-    setTimeout(() => setShowPaper(true), 600);
+    // After flap fully opens (1.8s), reveal paper
+    setTimeout(() => setShowPaper(true), 1800);
   };
 
   return (
